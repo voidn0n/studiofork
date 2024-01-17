@@ -170,6 +170,7 @@ namespace AssetStudio.GUI
             contextMenuStrip1 = new System.Windows.Forms.ContextMenuStrip(components);
             copyToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             exportSelectedAssetsToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            exportSelectedAssetsToolStripMenuItemFilterJ = new System.Windows.Forms.ToolStripMenuItem();
             exportAnimatorwithselectedAnimationClipMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             goToSceneHierarchyToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             showOriginalFileToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
@@ -1310,7 +1311,7 @@ namespace AssetStudio.GUI
             // contextMenuStrip1
             // 
             contextMenuStrip1.ImageScalingSize = new System.Drawing.Size(20, 20);
-            contextMenuStrip1.Items.AddRange(new System.Windows.Forms.ToolStripItem[] { copyToolStripMenuItem, exportSelectedAssetsToolStripMenuItem, exportAnimatorwithselectedAnimationClipMenuItem, goToSceneHierarchyToolStripMenuItem, showOriginalFileToolStripMenuItem });
+            contextMenuStrip1.Items.AddRange(new System.Windows.Forms.ToolStripItem[] { copyToolStripMenuItem, exportSelectedAssetsToolStripMenuItem, exportSelectedAssetsToolStripMenuItemFilterJ, exportAnimatorwithselectedAnimationClipMenuItem, goToSceneHierarchyToolStripMenuItem, showOriginalFileToolStripMenuItem });
             contextMenuStrip1.Name = "contextMenuStrip1";
             contextMenuStrip1.Size = new System.Drawing.Size(304, 114);
             // 
@@ -1327,6 +1328,11 @@ namespace AssetStudio.GUI
             exportSelectedAssetsToolStripMenuItem.Size = new System.Drawing.Size(303, 22);
             exportSelectedAssetsToolStripMenuItem.Text = "Export selected assets";
             exportSelectedAssetsToolStripMenuItem.Click += exportSelectedAssetsToolStripMenuItem_Click;
+
+            exportSelectedAssetsToolStripMenuItemFilterJ.Name = "exportSelectedAssetsToolStripMenuItemFilterJ";
+            exportSelectedAssetsToolStripMenuItemFilterJ.Size = new System.Drawing.Size(303, 22);
+            exportSelectedAssetsToolStripMenuItemFilterJ.Text = "Export selected assets(Filter)";
+            exportSelectedAssetsToolStripMenuItemFilterJ.Click += exportSelectedAssetsToolStripMenuItem_FilterJ_Click;
             // 
             // exportAnimatorwithselectedAnimationClipMenuItem
             // 
@@ -1462,6 +1468,7 @@ namespace AssetStudio.GUI
         private System.Windows.Forms.ToolStripMenuItem showOriginalFileToolStripMenuItem;
         private System.Windows.Forms.ToolStripMenuItem exportAnimatorwithselectedAnimationClipMenuItem;
         private System.Windows.Forms.ToolStripMenuItem exportSelectedAssetsToolStripMenuItem;
+        private System.Windows.Forms.ToolStripMenuItem exportSelectedAssetsToolStripMenuItemFilterJ;
         private System.Windows.Forms.ToolStripMenuItem filterTypeToolStripMenuItem;
         private System.Windows.Forms.ToolStripMenuItem allToolStripMenuItem;
         private System.Windows.Forms.ToolStripMenuItem exportSelectedObjectsToolStripMenuItem;

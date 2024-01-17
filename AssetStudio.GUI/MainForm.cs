@@ -1531,7 +1531,11 @@ namespace AssetStudio.GUI
 
         private void exportSelectedAssetsToolStripMenuItem_Click(object sender, EventArgs e)
         {
-            ExportAssets(ExportFilter.Selected, ExportType.Convert);
+            ExportAssets(ExportFilter.Selected, ExportType.Convert, false);
+        }
+        private void exportSelectedAssetsToolStripMenuItem_FilterJ_Click(object sender, EventArgs e)
+        {
+            ExportAssets(ExportFilter.Selected, ExportType.Convert, true);
         }
 
         private void showOriginalFileToolStripMenuItem_Click(object sender, EventArgs e)
@@ -1794,12 +1798,32 @@ namespace AssetStudio.GUI
             }
         }
 
-        private List<AssetItem> GetSelectedAssets()
+        private List<AssetItem> GetSelectedAssets(bool filterJ = false)
         {
             var selectedAssets = new List<AssetItem>(assetListView.SelectedIndices.Count);
             foreach (int index in assetListView.SelectedIndices)
             {
-                selectedAssets.Add((AssetItem)assetListView.Items[index]);
+                bool notAdd = false; 
+                if(filterJ)
+                {
+                    AssetItem item = (AssetItem)assetListView.Items[index];
+                    string itemName = item.Asset.Name;
+                    ClassIDType idType = item.Asset.type;
+                    if(idType == ClassIDType.GameObject)
+                    {
+                        if (itemName.EndsWith(")")) notAdd = true;
+                        if (itemName.EndsWith("_Col")) notAdd = true;
+                        if (itemName.EndsWith("_Ocl")) notAdd = true;
+                        if (itemName.EndsWith("_Lod1")) notAdd = true;
+                        if (itemName.EndsWith("_Lod2")) notAdd = true;
+                        if (itemName.EndsWith("_Lod3")) notAdd = true;
+                        if (itemName.EndsWith("_Lod4")) notAdd = true;
+                        if (itemName.EndsWith("_ShadowMesh")) notAdd = true;
+                        if (itemName.StartsWith("00_")) notAdd = true;
+                    }
+                   
+                }
+                if(notAdd == false) selectedAssets.Add((AssetItem)assetListView.Items[index]);
             }
 
             return selectedAssets;
@@ -1864,7 +1888,7 @@ namespace AssetStudio.GUI
             assetListView.EndUpdate();
         }
 
-        private void ExportAssets(ExportFilter type, ExportType exportType)
+        private void ExportAssets(ExportFilter type, ExportType exportType, bool filterJ = true)
         {
             if (exportableAssets.Count > 0)
             {
@@ -1875,18 +1899,26 @@ namespace AssetStudio.GUI
                     timer.Stop();
                     saveDirectoryBackup = saveFolderDialog.Folder;
                     List<AssetItem> toExportAssets = null;
-                    switch (type)
+                    if(filterJ)
                     {
-                        case ExportFilter.All:
-                            toExportAssets = exportableAssets;
-                            break;
-                        case ExportFilter.Selected:
-                            toExportAssets = GetSelectedAssets();
-                            break;
-                        case ExportFilter.Filtered:
-                            toExportAssets = visibleAssets;
-                            break;
+                        toExportAssets = GetSelectedAssets(filterJ);
                     }
+                    else
+                    {
+                        switch (type)
+                        {
+                            case ExportFilter.All:
+                                toExportAssets = exportableAssets;
+                                break;
+                            case ExportFilter.Selected:
+                                toExportAssets = GetSelectedAssets(filterJ);
+                                break;
+                            case ExportFilter.Filtered:
+                                toExportAssets = visibleAssets;
+                                break;
+                        }
+                    }
+                   
                     Studio.ExportAssets(saveFolderDialog.Folder, toExportAssets, exportType);
                 }
             }
