@@ -6,6 +6,8 @@ using System.IO;
 using System.Linq;
 using System.Text;
 using System.Text.RegularExpressions;
+using AssetStudioUtility;
+using ShaderLabConvert;
 
 namespace AssetStudio
 {
@@ -953,6 +955,43 @@ namespace AssetStudio
         public string[] m_LocalKeywords;
         public byte[] m_ProgramCode;
 
+
+        // JTAOO here
+        public VectorParameterJ[] VectorParameters { get; set; } = Array.Empty<VectorParameterJ>();
+        public MatrixParameterJ[] MatrixParameters { get; set; } = Array.Empty<MatrixParameterJ>();
+        public TextureParameterJ[] TextureParameters { get; set; } = Array.Empty<TextureParameterJ>();
+        public BufferBindingJ[] BufferParameters { get; set; } = Array.Empty<BufferBindingJ>();
+        public UAVParameterJ[] UAVParameters { get; set; } = Array.Empty<UAVParameterJ>();
+        public SamplerParameterJ[] SamplerParameters { get; set; } = Array.Empty<SamplerParameterJ>();
+        public ConstantBufferJ[] ConstantBuffers { get; set; } = Array.Empty<ConstantBufferJ>();
+        public BufferBindingJ[] ConstantBufferBindings { get; set; } = Array.Empty<BufferBindingJ>();
+        public StructParameterJ[] StructParameters { get; set; } = Array.Empty<StructParameterJ>();
+        public ParserBindChannelsJ BindChannels { get; set; } = new();
+
+
+        private string ReadStringJ(EndianBinaryReader reader)
+        {
+            int length = reader.ReadInt32();
+            if (length == 0)
+            {
+                return string.Empty;
+            }
+            byte[] buffer = new byte[length];
+            int offset = 0;
+            int count = length;
+            while (count > 0)
+            {
+                int read = reader.Read(buffer, offset, count);
+                if (read == 0)
+                {
+                    throw new Exception($"End of stream. Read {offset}, expected {length} bytes");
+                }
+                offset += read;
+                count -= read;
+            }
+            reader.AlignStream();
+            return Encoding.UTF8.GetString(buffer, 0, length);
+        }
         public ShaderSubProgram(EndianBinaryReader reader, bool hasUpdatedGpuProgram)
         {
             //LoadGpuProgramFromData
@@ -965,6 +1004,7 @@ namespace AssetStudio
             //201806140 - Unity 2019.1~2021.1
             //202012090 - Unity 2021.2
             m_Version = reader.ReadInt32();
+            // 202211230
             if (hasUpdatedGpuProgram && m_Version > 201806140)
             {
                 m_Version = 201806140;
@@ -994,6 +1034,325 @@ namespace AssetStudio
             reader.AlignStream();
 
             //TODO
+
+            // JTAOO Do here
+            int sourceMap = reader.ReadInt32();
+            int bindCount = reader.ReadInt32();
+            ShaderBindChannelJ[] channels = new ShaderBindChannelJ[bindCount];
+            for (int i = 0; i < bindCount; i++)
+            {
+                uint source = reader.ReadUInt32();
+                VertexComponent target = (VertexComponent)reader.ReadUInt32();
+                ShaderBindChannelJ channel = new ShaderBindChannelJ(source, target);
+                channels[i] = channel;
+                sourceMap |= 1 << (int)source;
+            }
+            BindChannels = new ParserBindChannelsJ(channels, sourceMap);
+
+            List<VectorParameterJ> vectors = new List<VectorParameterJ>();
+            List<MatrixParameterJ> matrices = new List<MatrixParameterJ>();
+            List<TextureParameterJ> textures = new List<TextureParameterJ>();
+            List<VectorParameterJ> structVectors = new List<VectorParameterJ>();
+            List<MatrixParameterJ> structMatrices = new List<MatrixParameterJ>();
+            List<BufferBindingJ> buffers = new List<BufferBindingJ>();
+            List<UAVParameterJ>? uavs = new List<UAVParameterJ>();
+            List<SamplerParameterJ>? samplers = new List<SamplerParameterJ>();
+            List<BufferBindingJ> constBindings = new List<BufferBindingJ>();
+            List<StructParameterJ> structs = new List<StructParameterJ>();
+
+            int paramGroupCount = reader.ReadInt32();
+            ConstantBuffers = new ConstantBufferJ[paramGroupCount - 1];
+            for (int i = 0; i < paramGroupCount; i++)
+            {
+                vectors.Clear();
+                matrices.Clear();
+                structs.Clear();
+
+                string groupName = ReadStringJ(reader);
+                //string name = reader.ReadString();
+                int usedSize = reader.ReadInt32();
+                int paramCount = reader.ReadInt32();
+                for (int j = 0; j < paramCount; j++)
+                {
+                    string paramName = ReadStringJ(reader);
+                    //string paramName = reader.ReadString();
+                    ShaderParamType paramType = (ShaderParamType)reader.ReadInt32();
+                    int rows = reader.ReadInt32();
+                    int columns = reader.ReadInt32();
+                    bool isMatrix = reader.ReadInt32() > 0;
+                    int arraySize = reader.ReadInt32();
+                    int index = reader.ReadInt32();
+
+                    if (isMatrix)
+                    {
+                        MatrixParameterJ matrix = new MatrixParameterJ(paramName, paramType, index, arraySize, rows, columns);
+                        matrices.Add(matrix);
+                    }
+                    else
+                    {
+                        VectorParameterJ vector = new VectorParameterJ(paramName, paramType, index, arraySize, columns);
+                        vectors.Add(vector);
+                    }
+                }
+                // if (HasStructParameters(reader_Version))
+                int structCount = reader.ReadInt32();
+                for (int j = 0; j < structCount; j++)
+                {
+                    structVectors.Clear();
+                    structMatrices.Clear();
+
+                    string structName = ReadStringJ(reader);
+                    //string structName = reader.ReadString();
+                    int index = reader.ReadInt32();
+                    int arraySize = reader.ReadInt32();
+                    int structSize = reader.ReadInt32();
+
+                    int strucParamCount = reader.ReadInt32();
+                    for (int k = 0; k < strucParamCount; k++)
+                    {
+                        string paramName = ReadStringJ(reader);
+                        //string paramName = reader.ReadString();
+                        paramName = $"{structName}.{paramName}";
+                        ShaderParamType paramType = (ShaderParamType)reader.ReadInt32();
+                        int rows = reader.ReadInt32();
+                        int columns = reader.ReadInt32();
+                        bool isMatrix = reader.ReadInt32() > 0;
+                        int vectorArraySize = reader.ReadInt32();
+                        int paramIndex = reader.ReadInt32();
+
+                        if (isMatrix)
+                        {
+                            MatrixParameterJ matrix = new MatrixParameterJ(paramName, paramType, paramIndex, vectorArraySize, rows, columns);
+                            structMatrices.Add(matrix);
+                        }
+                        else
+                        {
+                            VectorParameterJ vector = new VectorParameterJ(paramName, paramType, paramIndex, vectorArraySize, columns);
+                            structVectors.Add(vector);
+                        }
+                    }
+
+                    StructParameterJ @struct = new StructParameterJ(structName, index, arraySize, structSize, structVectors.ToArray(), structMatrices.ToArray());
+                    structs.Add(@struct);
+                }
+                if (i == 0)
+                {
+                    VectorParameters = vectors.ToArray();
+                    MatrixParameters = matrices.ToArray();
+                    StructParameters = structs.ToArray();
+                }
+                else
+                {
+                    ConstantBufferJ constBuffer = new ConstantBufferJ(groupName, matrices.ToArray(), vectors.ToArray(), structs.ToArray(), usedSize);
+                    ConstantBuffers[i - 1] = constBuffer;
+                }
+
+
+            } // ... 
+
+
+            //=================
+            int paramGroup2Count = reader.ReadInt32(); 
+
+            for (int i = 0; i < paramGroup2Count; i++)
+            {
+                string name = ReadStringJ(reader);
+                //string name = reader.ReadString();
+                int type = reader.ReadInt32();
+                int index = reader.ReadInt32();
+                int extraValue = reader.ReadInt32();
+
+                if (type == 0)
+                {
+                    TextureParameterJ texture;
+                    if (false)// HasNewTextureParams(reader_Version)
+                    {
+                        uint textureExtraValue = reader.ReadUInt32();
+                        bool isMultiSampled = (textureExtraValue & 1) == 1;
+                        byte dimension = (byte)(textureExtraValue >> 1);
+                        int samplerIndex = extraValue;
+                        texture = new TextureParameterJ(name, index, dimension, samplerIndex, isMultiSampled);
+                    }
+                    else if (true)//HasMultiSampled(reader_Version)
+                    {
+                        uint textureExtraValue = reader.ReadUInt32();
+                        bool isMultiSampled = textureExtraValue == 1;
+                        byte dimension = unchecked((byte)extraValue);
+                        int samplerIndex = extraValue >> 8;
+                        if (samplerIndex == 0xFFFFFF)
+                        {
+                            samplerIndex = -1;
+                        }
+
+                        texture = new TextureParameterJ(name, index, dimension, samplerIndex, isMultiSampled);
+                    }
+                    else
+                    {
+                        byte dimension = unchecked((byte)extraValue);
+                        int samplerIndex = extraValue >> 8;
+                        if (samplerIndex == 0xFFFFFF)
+                        {
+                            samplerIndex = -1;
+                        }
+
+                        texture = new TextureParameterJ(name, index, dimension, samplerIndex);
+                    }
+                    textures.Add(texture);
+                }
+                else if (type == 1)
+                {
+                    BufferBindingJ binding = new BufferBindingJ(name, index);
+                    constBindings.Add(binding);
+                }
+                else if (type == 2)
+                {
+                    BufferBindingJ buffer = new BufferBindingJ(name, index);
+                    buffers.Add(buffer);
+                }
+                else if (type == 3 && true)//HasUAVParameters(reader_Version)
+                {
+                    UAVParameterJ uav = new UAVParameterJ(name, index, extraValue);
+                    uavs.Add(uav);
+                }
+                else if (type == 4 && true)//HasSamplerParameters(reader_Version)
+                {
+                    SamplerParameterJ sampler = new SamplerParameterJ((uint)extraValue, index);
+                    samplers.Add(sampler);
+                }
+                else
+                {
+                    throw new Exception($"Unupported parameter type {type}");
+                }
+
+
+            }
+
+            TextureParameters = textures.ToArray();
+            BufferParameters = buffers.ToArray();
+            if (true)//HasUAVParameters(reader_Version)
+            {
+                UAVParameters = uavs.ToArray();
+            }
+
+            if (true)//HasSamplerParameters(reader_Version)
+            {
+                SamplerParameters = samplers.ToArray();
+            }
+
+            ConstantBufferBindings = constBindings.ToArray();
+            if (true)//HasStructParameters(reader_Version)
+            {
+                StructParameters = structs.ToArray();
+            }
+        }
+
+        private static byte[] GetRelevantData(byte[] bytes, int offset)
+        {
+            if (bytes == null)
+            {
+                throw new ArgumentNullException(nameof(bytes));
+            }
+
+            if (offset < 0 || offset > bytes.Length)
+            {
+                throw new ArgumentOutOfRangeException(nameof(offset));
+            }
+
+            int size = bytes.Length - offset;
+            byte[] result = new byte[size];
+            for (int i = 0; i < size; i++)
+            {
+                result[i] = bytes[i + offset];
+            }
+            return result;
+        }
+
+        private static void ExportPassConstantBufferDefinitions(StringBuilder sb, HashSet<string> declaredBufs,
+           ConstantBufferJ cbuffer, int depth)
+        {
+            if (cbuffer != null)
+            {
+                bool nonGlobalCbuffer = cbuffer.Name.Contains("Global") == false;
+
+                if (nonGlobalCbuffer)
+                {
+                    sb.AppendIndent(depth);
+                    sb.AppendLine($"CBUFFER_START({cbuffer.Name})");
+                    depth++;
+                }
+
+                NumericShaderParameterJ[] allParams = cbuffer.AllNumericParams;
+                foreach (NumericShaderParameterJ param in allParams)
+                {
+                    string typeName = DXShaderNamingUtilsJ.GetConstantBufferParamTypeName(param);
+                    string name = param.Name;
+
+                    // skip things like unity_MatrixVP if they show up in $Globals
+                    //if (UnityShaderConstants.INCLUDED_UNITY_PROP_NAMES.Contains(name))
+                    {
+                        //continue;
+                    }
+
+                    if (!declaredBufs.Contains(name))
+                    {
+                        if (param.ArraySize > 0)
+                        {
+                            sb.AppendIndent(depth);
+                            sb.AppendLine($"{typeName} {name}[{param.ArraySize}];");
+                        }
+                        else
+                        {
+                            sb.AppendIndent(depth);
+                            sb.AppendLine($"{typeName} {name};");
+                        }
+                        declaredBufs.Add(name);
+                    }
+                }
+
+                if (nonGlobalCbuffer)
+                {
+                    depth--;
+                    sb.AppendIndent(depth);
+                    sb.AppendLine("CBUFFER_END");
+                }
+            }
+        }
+
+        private void ExportPassTextureParamDefinitions(StringBuilder sb, HashSet<string> declaredBufs, int depth)
+        {
+            foreach (TextureParameterJ param in TextureParameters)
+            {
+                string name = param.Name;
+                if (!declaredBufs.Contains(name) && true)//!UnityShaderConstants.BUILTIN_TEXTURE_NAMES.Contains(name)
+                {
+                    sb.AppendIndent(depth);
+                    if (param.Dim == 2)
+                    {
+                        sb.AppendLine($"sampler2D {name};");
+                    }
+                    else if (param.Dim == 3)
+                    {
+                        sb.AppendLine($"sampler3D {name};");
+                    }
+                    else if (param.Dim == 4)
+                    {
+                        sb.AppendLine($"samplerCUBE {name};");
+                    }
+                    else if (param.Dim == 5)
+                    {
+                        sb.AppendLine($"UNITY_DECLARE_TEX2DARRAY({name});");
+                    }
+                    else if (param.Dim == 6)
+                    {
+                        sb.AppendLine($"UNITY_DECLARE_TEXCUBEARRAY({name});");
+                    }
+                    else
+                    {
+                        sb.AppendLine($"sampler2D {name}; // Unsure of real type ({param.Dim})");
+                    }
+                    declaredBufs.Add(name);
+                }
+            }
         }
 
         public string Export()
@@ -1047,8 +1406,233 @@ namespace AssetStudio
                     case ShaderGpuProgramType.DX10Level9Pixel:
                     case ShaderGpuProgramType.DX11VertexSM40:
                     case ShaderGpuProgramType.DX11VertexSM50:
+                        {
+                            sb.Append("\"");
+                            sb.Append("// DX11VertexSM50");
+                            sb.Append("\n// only for genshin, by JTAOO");
+                            sb.Append("\n  ");
+
+                            int headerVersion = m_ProgramCode[0];
+                            int dataOffset = 6;
+                            if (headerVersion >= 2)
+                            {
+                                dataOffset += 0x20;
+                            }
+                            byte[] trimmedProgramData = GetRelevantData(m_ProgramCode, dataOffset);
+
+                            USCShaderConverterJ vertexConverter = new USCShaderConverterJ();
+                            vertexConverter.LoadDirectXCompiledShader(new MemoryStream(trimmedProgramData));
+
+                            sb.AppendIndent(3);
+                            sb.AppendLine("#pragma vertex vert");
+                            DirectXCompiledShaderJ dxShader_vertex = vertexConverter.DxShader;
+
+                            sb.AppendIndent(3);
+                            sb.AppendLine("struct appdata_full");
+                            sb.AppendIndent(3);
+                            sb.AppendLine("{");
+                            foreach (ISGN.Input input in dxShader_vertex.Isgn.inputs)
+                            {
+                                string type = input.name + input.index;
+                                string name = DXShaderNamingUtilsJ.GetISGNInputName(input);
+                                sb.AppendIndent(4);
+                                sb.AppendLine($" {name} : {type};");
+                            }
+                            sb.AppendIndent(3);
+                            sb.AppendLine("};");
+
+                            sb.AppendIndent(3);
+                            sb.AppendLine("struct v2f");
+                            sb.AppendIndent(3);
+                            sb.AppendLine("{");
+
+                            foreach (OSGN.Output output in dxShader_vertex.Osgn.outputs)
+                            {
+                                string format = DXShaderNamingUtilsJ.GetOSGNFormatName(output);
+                                string type = output.name + output.index;
+                                string name = DXShaderNamingUtilsJ.GetOSGNOutputName(output);
+                                sb.AppendIndent(4);
+                                sb.AppendLine($"{format} {name} : {type};");
+                            }
+                            sb.AppendIndent(3);
+                            sb.AppendLine("};");
+
+                            HashSet<string> declaredBufs = new HashSet<string>();
+                            sb.AppendIndent(3);
+                            sb.AppendLine("// $Globals ConstantBuffers for Vertex Shader");
+                            ConstantBufferJ cbuffer = ConstantBuffers.FirstOrDefault(cb => cb.Name.Contains("Global"));
+                            ExportPassConstantBufferDefinitions(sb, declaredBufs, cbuffer, 3);
+
+                            sb.AppendIndent(3);
+                            sb.AppendLine("// Custom ConstantBuffers for Vertex Shader");
+                            foreach (ConstantBufferJ cbuffer1 in ConstantBuffers)
+                            {
+                                //if (UnityShaderConstants.BUILTIN_CBUFFER_NAMES.Contains(cbuffer1.Name))
+                                {
+                                    //continue;
+                                }
+                                sb.AppendIndent(3);
+                                sb.AppendLine("// groupName: " + cbuffer1.Name);
+                                ExportPassConstantBufferDefinitions(sb, declaredBufs, cbuffer1, 3);
+                            }
+
+                            sb.AppendIndent(3);
+                            sb.AppendLine("// Texture params for Vertex Shader");
+                            ExportPassTextureParamDefinitions(sb, declaredBufs, 3);
+
+                            sb.AppendIndent(3);
+                            sb.AppendLine("");
+
+                            string keywordsList = "";
+                            if (m_Keywords != null)
+                            {
+                                foreach (string keyword1 in m_Keywords)
+                                {
+                                    keywordsList = keywordsList + " " + keyword1;
+                                }
+                            }
+                            if (m_LocalKeywords != null)
+                            {
+                                foreach (string keyword1 in m_LocalKeywords)
+                                {
+                                    keywordsList = keywordsList + " " + keyword1;
+                                }
+                            }
+                            sb.AppendIndent(3);
+                            sb.AppendLine($"// Keywords: {keywordsList}");
+
+                            sb.AppendIndent(3);
+                            sb.AppendLine($"{USILConstants.VERT_TO_FRAG_STRUCT_NAME} vert(appdata_full {USILConstants.VERT_INPUT_NAME})");
+                            sb.AppendIndent(3);
+                            sb.AppendLine("{");
+
+                            vertexConverter.ConvertShaderToUShaderProgram();
+                            // gs4.0取不到bind信息, 再看看
+                            if(ConstantBufferBindings.Length > 0)
+                                vertexConverter.ApplyMetadataToProgram_Vertex(this);
+                            string progamText = vertexConverter.CovnertUShaderProgramToHLSL(4);
+                            sb.Append(progamText);
+                            sb.AppendIndent(3);
+                            sb.AppendLine("}");
+
+                            sb.AppendIndent(3);
+                            sb.AppendLine("ENDCG");
+
+                            sb.Append("\"");
+                            break;
+                        }
                     case ShaderGpuProgramType.DX11PixelSM40:
+                        {
+                            sb.Append("// DX11PixelSM40");
+                            break;
+                        }
                     case ShaderGpuProgramType.DX11PixelSM50:
+                        {
+                            sb.Append("\"");
+                            sb.Append("// DX11PixelSM50");
+                            sb.Append("\n// only for genshin, by JTAOO");
+                            sb.Append("\n  ");
+
+                            int headerVersion = m_ProgramCode[0];
+                            int dataOffset = 6;
+                            if (headerVersion >= 2)
+                            {
+                                dataOffset += 0x20;
+                            }
+                            byte[] trimmedProgramData = GetRelevantData(m_ProgramCode, dataOffset);
+
+                            USCShaderConverterJ fragmentConverter = new USCShaderConverterJ();
+                            fragmentConverter.LoadDirectXCompiledShader(new MemoryStream(trimmedProgramData));
+
+                            sb.AppendIndent(3);
+                            sb.AppendLine("#pragma fragment frag");
+                            sb.AppendIndent(3);
+                            sb.AppendLine("struct fout");
+                            sb.AppendIndent(3);
+                            sb.AppendLine("{");
+                            DirectXCompiledShaderJ dxShader_frag = fragmentConverter.DxShader;
+                            foreach (OSGN.Output output in dxShader_frag.Osgn.outputs)
+                            {
+                                string format = DXShaderNamingUtilsJ.GetOSGNFormatName(output);
+                                string type = output.name + output.index;
+                                string name = DXShaderNamingUtilsJ.GetOSGNOutputName(output);
+                                sb.AppendIndent(4);
+                                sb.AppendLine($"{format} {name} : {type};");
+                            }
+                            sb.AppendIndent(3);
+                            sb.AppendLine("};");
+
+                            HashSet<string> declaredBufs = new HashSet<string>();
+                            sb.AppendIndent(3);
+                            sb.AppendLine("// $Globals ConstantBuffers for Fragment Shader");
+                            ConstantBufferJ cbuffer = ConstantBuffers.FirstOrDefault(cb => cb.Name.Contains("Global"));
+                            ExportPassConstantBufferDefinitions(sb, declaredBufs, cbuffer, 3);
+
+                            sb.AppendIndent(3);
+                            sb.AppendLine("// Custom ConstantBuffers for Fragment Shader");
+                            foreach (ConstantBufferJ cbuffer1 in ConstantBuffers)
+                            {
+                                //if (UnityShaderConstants.BUILTIN_CBUFFER_NAMES.Contains(cbuffer1.Name))
+                                {
+                                    //continue;
+                                }
+                                sb.AppendIndent(3);
+                                sb.AppendLine("// groupName: " + cbuffer1.Name);
+                                ExportPassConstantBufferDefinitions(sb, declaredBufs, cbuffer1, 3);
+                            }
+
+                            sb.AppendIndent(3);
+                            sb.AppendLine("// Texture params for Fragment Shader");
+                            ExportPassTextureParamDefinitions(sb, declaredBufs, 3);
+
+                            sb.AppendIndent(3);
+                            sb.AppendLine("");
+
+                            string keywordsList = "";
+                            if (m_Keywords != null)
+                            {
+                                foreach (string keyword1 in m_Keywords)
+                                {
+                                    keywordsList = keywordsList + " " + keyword1;
+                                }
+                            }
+                            if (m_LocalKeywords != null)
+                            {
+                                foreach (string keyword1 in m_LocalKeywords)
+                                {
+                                    keywordsList = keywordsList + " " + keyword1;
+                                }
+                            }
+                            sb.AppendIndent(3);
+                            sb.AppendLine($"// Keywords: {keywordsList}");
+
+                            DirectXCompiledShaderJ dxShader1 = fragmentConverter.DxShader;
+                            bool hasFrontFace = dxShader1.Isgn.inputs.Any(i => i.name == "SV_IsFrontFace");
+
+                            sb.AppendIndent(3);
+                            string args = $"{USILConstants.VERT_TO_FRAG_STRUCT_NAME} {USILConstants.FRAG_INPUT_NAME}";
+                            if (hasFrontFace)
+                            {
+                                // not part of v2f
+                                args += $", float facing: VFACE";
+                            }
+                            sb.AppendLine($"{USILConstants.FRAG_OUTPUT_STRUCT_NAME} frag({args})");
+                            sb.AppendIndent(3);
+                            sb.AppendLine("{");
+
+                            fragmentConverter.ConvertShaderToUShaderProgram();
+                            fragmentConverter.ApplyMetadataToProgram_Frag(this);
+                            string progamText = fragmentConverter.CovnertUShaderProgramToHLSL(4);
+                            sb.Append(progamText);
+                            sb.AppendIndent(3);
+                            sb.AppendLine("}");
+
+                            sb.AppendIndent(3);
+                            sb.AppendLine("ENDCG");
+
+                            sb.Append("\"");
+                            break;
+                        }
                     case ShaderGpuProgramType.DX11GeometrySM40:
                     case ShaderGpuProgramType.DX11GeometrySM50:
                     case ShaderGpuProgramType.DX11HullSM50:
@@ -1084,7 +1668,9 @@ namespace AssetStudio
                     case ShaderGpuProgramType.SPIRV:
                         try
                         {
-                            sb.Append(SpirVShaderConverter.Convert(m_ProgramCode));
+                            // sb.Append(SpirVShaderConverter.Convert(m_ProgramCode)); 
+                            sb.AppendIndent(3);
+                            sb.AppendLine("SPIRV Hided by JTAOO");
                         }
                         catch (Exception e)
                         {
