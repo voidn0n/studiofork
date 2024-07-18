@@ -1521,11 +1521,7 @@ namespace AssetStudio
                             sb.Append("\"");
                             break;
                         }
-                    case ShaderGpuProgramType.DX11PixelSM40:
-                        {
-                            sb.Append("// DX11PixelSM40");
-                            break;
-                        }
+                    case ShaderGpuProgramType.DX11PixelSM40: 
                     case ShaderGpuProgramType.DX11PixelSM50:
                         {
                             sb.Append("\"");
