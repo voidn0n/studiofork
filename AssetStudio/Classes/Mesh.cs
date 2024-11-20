@@ -808,6 +808,21 @@ namespace AssetStudio
             for (var chn = 0; chn < m_VertexData.m_Channels.Count; chn++)
             {
                 var m_Channel = m_VertexData.m_Channels[chn];
+                if (chn == 12 && m_Channel.dimension == 0)
+                {
+                    if (m_Skin == null)
+                    {
+                        InitMSkin();
+                    }
+                    for (int i = 0; i < m_VertexCount; i++)
+                    {
+                        for (int j = 0; j < 1; j++)
+                        {
+                            m_Skin[i].weight[j] = 1;
+                        }
+                    }
+                }
+
                 if (m_Channel.dimension > 0)
                 {
                     var m_Stream = m_VertexData.m_Streams[m_Channel.stream];
