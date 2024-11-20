@@ -22,7 +22,9 @@ namespace AssetStudio
             reader.Endian = EndianType.LittleEndian;
 
             signature = reader.ReadStringToNull(4);
-            Logger.Verbose($"Parsed signature {signature}");
+            if(Logger.Flags.HasFlag(LoggerEvent.Verbose)){
+			Logger.Verbose($"Parsed signature {signature}");
+									}
             if (signature != "mhy0")
                 throw new Exception("not a mhy file");
 
@@ -34,7 +36,9 @@ namespace AssetStudio
                 compressedBlocksInfoSize = reader.ReadUInt32(),
                 flags = (ArchiveFlags)0x43
             };
-            Logger.Verbose($"Header: {m_Header}");
+            if(Logger.Flags.HasFlag(LoggerEvent.Verbose)){
+			Logger.Verbose($"Header: {m_Header}");
+									}
             ReadBlocksInfoAndDirectory(reader);
             using var blocksStream = CreateBlocksStream(reader.FullPath);
             ReadBlocks(reader, blocksStream);
@@ -51,11 +55,15 @@ namespace AssetStudio
             var blocksInfo = reader.ReadBytes((int)m_Header.compressedBlocksInfoSize);
             DescrambleHeader(blocksInfo);
 
-            Logger.Verbose($"Descrambled blocksInfo signature {Convert.ToHexString(blocksInfo, 0 , 4)}");
+            if(Logger.Flags.HasFlag(LoggerEvent.Verbose)){
+			Logger.Verbose($"Descrambled blocksInfo signature {Convert.ToHexString(blocksInfo, 0 , 4)}");
+									}
             using var blocksInfoStream = new MemoryStream(blocksInfo, 0x20, (int)m_Header.compressedBlocksInfoSize - 0x20);
             using var blocksInfoReader = new EndianBinaryReader(blocksInfoStream);
             m_Header.uncompressedBlocksInfoSize = blocksInfoReader.ReadMhyUInt();
-            Logger.Verbose($"uncompressed blocksInfo size: 0x{m_Header.uncompressedBlocksInfoSize:X8}");
+            if(Logger.Flags.HasFlag(LoggerEvent.Verbose)){
+			Logger.Verbose($"uncompressed blocksInfo size: 0x{m_Header.uncompressedBlocksInfoSize:X8}");
+									}
             var compressedBlocksInfo = blocksInfoReader.ReadBytes((int)blocksInfoReader.Remaining);
 
             var uncompressedBlocksInfo = ArrayPool<byte>.Shared.Rent((int)m_Header.uncompressedBlocksInfoSize);
@@ -69,12 +77,16 @@ namespace AssetStudio
                     throw new IOException($"Lz4 decompression error, write {numWrite} bytes but expected {m_Header.uncompressedBlocksInfoSize} bytes");
                 }
 
-                Logger.Verbose($"Writing block and directory to blocks stream...");
+                if(Logger.Flags.HasFlag(LoggerEvent.Verbose)){
+			Logger.Verbose($"Writing block and directory to blocks stream...");
+									}
                 using var blocksInfoUncompressedStream = new MemoryStream(uncompressedBlocksInfo, 0, (int)m_Header.uncompressedBlocksInfoSize);
                 using var blocksInfoUncompressedReader = new EndianBinaryReader(blocksInfoUncompressedStream);
                 var nodesCount = blocksInfoUncompressedReader.ReadMhyInt();
                 m_DirectoryInfo = new List<BundleFile.Node>();
-                Logger.Verbose($"Directory count: {nodesCount}");
+                if(Logger.Flags.HasFlag(LoggerEvent.Verbose)){
+			Logger.Verbose($"Directory count: {nodesCount}");
+									}
                 for (int i = 0; i < nodesCount; i++)
                 {
                     m_DirectoryInfo.Add(new BundleFile.Node
@@ -85,12 +97,16 @@ namespace AssetStudio
                         size = blocksInfoUncompressedReader.ReadMhyUInt()
                     });
 
-                    Logger.Verbose($"Directory {i} Info: {m_DirectoryInfo[i]}");
+                    if(Logger.Flags.HasFlag(LoggerEvent.Verbose)){
+			Logger.Verbose($"Directory {i} Info: {m_DirectoryInfo[i]}");
+									}
                 }
 
                 var blocksInfoCount = blocksInfoUncompressedReader.ReadMhyInt();
                 m_BlocksInfo = new List<BundleFile.StorageBlock>();
-                Logger.Verbose($"Blocks count: {blocksInfoCount}");
+                if(Logger.Flags.HasFlag(LoggerEvent.Verbose)){
+			Logger.Verbose($"Blocks count: {blocksInfoCount}");
+									}
                 for (int i = 0; i < blocksInfoCount; i++)
                 {
                     m_BlocksInfo.Add(new BundleFile.StorageBlock
@@ -100,7 +116,9 @@ namespace AssetStudio
                         flags = (StorageBlockFlags)0x43
                     });
 
-                    Logger.Verbose($"Block {i} Info: {m_BlocksInfo[i]}");
+                    if(Logger.Flags.HasFlag(LoggerEvent.Verbose)){
+			Logger.Verbose($"Block {i} Info: {m_BlocksInfo[i]}");
+									}
                 }
             }
             finally
@@ -113,7 +131,9 @@ namespace AssetStudio
         {
             Stream blocksStream;
             var uncompressedSizeSum = (int)m_BlocksInfo.Sum(x => x.uncompressedSize);
-            Logger.Verbose($"Total size of decompressed blocks: 0x{uncompressedSizeSum:X8}");
+            if(Logger.Flags.HasFlag(LoggerEvent.Verbose)){
+			Logger.Verbose($"Total size of decompressed blocks: 0x{uncompressedSizeSum:X8}");
+									}
             if (uncompressedSizeSum >= int.MaxValue)
                 blocksStream = new FileStream(path + ".temp", FileMode.Create, FileAccess.ReadWrite, FileShare.None, 4096, FileOptions.DeleteOnClose);
             else
@@ -143,7 +163,9 @@ namespace AssetStudio
                     reader.Read(compressedBytesSpan);
                     DescrambleEntry(compressedBytesSpan);
 
-                    Logger.Verbose($"Descrambled block signature {Convert.ToHexString(compressedBytes, 0, 4)}");
+                    if(Logger.Flags.HasFlag(LoggerEvent.Verbose)){
+			Logger.Verbose($"Descrambled block signature {Convert.ToHexString(compressedBytes, 0, 4)}");
+									}
                     var numWrite = LZ4.Instance.Decompress(compressedBytesSpan[0xC..], uncompressedBytesSpan);
                     if (numWrite != uncompressedSize)
                     {
@@ -162,7 +184,9 @@ namespace AssetStudio
 
         private void ReadFiles(Stream blocksStream, string path)
         {
-            Logger.Verbose($"Writing files from blocks stream...");
+            if(Logger.Flags.HasFlag(LoggerEvent.Verbose)){
+			Logger.Verbose($"Writing files from blocks stream...");
+									}
 
             fileList = new List<StreamFile>();
             for (int i = 0; i < m_DirectoryInfo.Count; i++)

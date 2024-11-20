@@ -8,14 +8,18 @@ namespace AssetStudio
     {
         public static void Decrypt(Span<byte> bytes)
         {
-            Logger.Verbose($"Attempting to decrypt block with FairGuard encryption...");
+            if(Logger.Flags.HasFlag(LoggerEvent.Verbose)){
+			Logger.Verbose($"Attempting to decrypt block with FairGuard encryption...");
+									}
 
             var encryptedOffset = 0;
             var encryptedSize = bytes.Length > 0x500 ? 0x500 : bytes.Length;
 
             if (encryptedSize < 0x20)
             {
-                Logger.Verbose($"block size is less that minimum, skipping...");
+                if(Logger.Flags.HasFlag(LoggerEvent.Verbose)){
+			Logger.Verbose($"block size is less that minimum, skipping...");
+									}
                 return;
             }
 

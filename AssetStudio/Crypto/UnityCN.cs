@@ -28,7 +28,9 @@ namespace AssetStudio
             DecryptKey(signatureKey, signatureBytes);
 
             var str = Encoding.UTF8.GetString(signatureBytes);
-            Logger.Verbose($"Decrypted signature is {str}");
+            if(Logger.Flags.HasFlag(LoggerEvent.Verbose)){
+			Logger.Verbose($"Decrypted signature is {str}");
+									}
             if (str != Signature)
             {
                 throw new Exception($"Invalid Signature, Expected {Signature} but found {str} instead");
@@ -49,7 +51,9 @@ namespace AssetStudio
 
         public static bool SetKey(Entry entry)
         {
-            Logger.Verbose($"Initializing decryptor with key {entry.Key}");
+            if(Logger.Flags.HasFlag(LoggerEvent.Verbose)){
+			Logger.Verbose($"Initializing decryptor with key {entry.Key}");
+									}
             try
             {
                 using var aes = Aes.Create();
@@ -57,7 +61,9 @@ namespace AssetStudio
                 aes.Key = Convert.FromHexString(entry.Key);
 
                 Encryptor = aes.CreateEncryptor();
-                Logger.Verbose($"Decryptor initialized !!");
+                if(Logger.Flags.HasFlag(LoggerEvent.Verbose)){
+			Logger.Verbose($"Decryptor initialized !!");
+									}
             }
             catch (Exception e)
             {

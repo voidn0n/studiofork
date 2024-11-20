@@ -70,18 +70,24 @@ namespace AssetStudio
 
             }
 
-            Logger.Verbose($"File {fileName} Info: {header}");
+            if(Logger.Flags.HasFlag(LoggerEvent.Verbose)){
+			Logger.Verbose($"File {fileName} Info: {header}");
+									}
 
             // ReadMetadata
             if (m_FileEndianess == 0)
             {
                 reader.Endian = EndianType.LittleEndian;
-                Logger.Verbose($"Endianness {reader.Endian}");
+                if(Logger.Flags.HasFlag(LoggerEvent.Verbose)){
+			Logger.Verbose($"Endianness {reader.Endian}");
+									}
             }
             if (header.m_Version >= SerializedFileFormatVersion.Unknown_7)
             {
                 unityVersion = reader.ReadStringToNull();
-                Logger.Verbose($"Unity version {unityVersion}");
+                if(Logger.Flags.HasFlag(LoggerEvent.Verbose)){
+			Logger.Verbose($"Unity version {unityVersion}");
+									}
                 SetVersion(unityVersion);
             }
             if (header.m_Version >= SerializedFileFormatVersion.Unknown_8)
@@ -89,15 +95,21 @@ namespace AssetStudio
                 m_TargetPlatform = (BuildTarget)reader.ReadInt32();
                 if (!Enum.IsDefined(typeof(BuildTarget), m_TargetPlatform))
                 {
-                    Logger.Verbose($"Parsed target format {m_TargetPlatform} doesn't match any of supported formats, defaulting to {BuildTarget.UnknownPlatform}");
+                    if(Logger.Flags.HasFlag(LoggerEvent.Verbose)){
+			Logger.Verbose($"Parsed target format {m_TargetPlatform} doesn't match any of supported formats, defaulting to {BuildTarget.UnknownPlatform}");
+									}
                     m_TargetPlatform = BuildTarget.UnknownPlatform;
                 }
                 else if (m_TargetPlatform == BuildTarget.NoTarget && game.Type.IsMhyGroup())
                 {
-                    Logger.Verbose($"Selected game {game.Name} is a mhy game, forcing target format {BuildTarget.StandaloneWindows64}");
+                    if(Logger.Flags.HasFlag(LoggerEvent.Verbose)){
+			Logger.Verbose($"Selected game {game.Name} is a mhy game, forcing target format {BuildTarget.StandaloneWindows64}");
+									}
                     m_TargetPlatform = BuildTarget.StandaloneWindows64;
                 }
-                Logger.Verbose($"Target format {m_TargetPlatform}");
+                if(Logger.Flags.HasFlag(LoggerEvent.Verbose)){
+			Logger.Verbose($"Target format {m_TargetPlatform}");
+									}
             }
             if (header.m_Version >= SerializedFileFormatVersion.HasTypeTreeHashes)
             {
@@ -107,7 +119,9 @@ namespace AssetStudio
             // Read Types
             int typeCount = reader.ReadInt32();
             m_Types = new List<SerializedType>();
-            Logger.Verbose($"Found {typeCount} serialized types");
+            if(Logger.Flags.HasFlag(LoggerEvent.Verbose)){
+			Logger.Verbose($"Found {typeCount} serialized types");
+									}
             for (int i = 0; i < typeCount; i++)
             {
                 m_Types.Add(ReadSerializedType(false));
@@ -123,7 +137,9 @@ namespace AssetStudio
             m_Objects = new List<ObjectInfo>();
             Objects = new List<Object>();
             ObjectsDic = new Dictionary<long, Object>();
-            Logger.Verbose($"Found {objectCount} objects");
+            if(Logger.Flags.HasFlag(LoggerEvent.Verbose)){
+			Logger.Verbose($"Found {objectCount} objects");
+									}
             for (int i = 0; i < objectCount; i++)
             {
                 var objectInfo = new ObjectInfo();
@@ -174,14 +190,18 @@ namespace AssetStudio
                 {
                     objectInfo.stripped = reader.ReadByte();
                 }
-                Logger.Verbose($"Object Info: {objectInfo}");
+                if(Logger.Flags.HasFlag(LoggerEvent.Verbose)){
+			Logger.Verbose($"Object Info: {objectInfo}");
+									}
                 m_Objects.Add(objectInfo);
             }
 
             if (header.m_Version >= SerializedFileFormatVersion.HasScriptTypeIndex)
             {
                 int scriptCount = reader.ReadInt32();
-                Logger.Verbose($"Found {scriptCount} scripts");
+                if(Logger.Flags.HasFlag(LoggerEvent.Verbose)){
+			Logger.Verbose($"Found {scriptCount} scripts");
+									}
                 m_ScriptTypes = new List<LocalSerializedObjectIdentifier>();
                 for (int i = 0; i < scriptCount; i++)
                 {
@@ -196,14 +216,18 @@ namespace AssetStudio
                         reader.AlignStream();
                         m_ScriptType.localIdentifierInFile = reader.ReadInt64();
                     }
-                    Logger.Verbose($"Script Info: {m_ScriptType}");
+                    if(Logger.Flags.HasFlag(LoggerEvent.Verbose)){
+			Logger.Verbose($"Script Info: {m_ScriptType}");
+									}
                     m_ScriptTypes.Add(m_ScriptType);
                 }
             }
 
             int externalsCount = reader.ReadInt32();
             m_Externals = new List<FileIdentifier>();
-            Logger.Verbose($"Found {externalsCount} externals");
+            if(Logger.Flags.HasFlag(LoggerEvent.Verbose)){
+			Logger.Verbose($"Found {externalsCount} externals");
+									}
             for (int i = 0; i < externalsCount; i++)
             {
                 var m_External = new FileIdentifier();
@@ -218,7 +242,9 @@ namespace AssetStudio
                 }
                 m_External.pathName = reader.ReadStringToNull();
                 m_External.fileName = Path.GetFileName(m_External.pathName);
-                Logger.Verbose($"External Info: {m_External}");
+                if(Logger.Flags.HasFlag(LoggerEvent.Verbose)){
+			Logger.Verbose($"External Info: {m_External}");
+									}
                 m_Externals.Add(m_External);
             }
 
@@ -226,7 +252,9 @@ namespace AssetStudio
             {
                 int refTypesCount = reader.ReadInt32();
                 m_RefTypes = new List<SerializedType>();
-                Logger.Verbose($"Found {refTypesCount} reference types");
+                if(Logger.Flags.HasFlag(LoggerEvent.Verbose)){
+			Logger.Verbose($"Found {refTypesCount} reference types");
+									}
                 for (int i = 0; i < refTypesCount; i++)
                 {
                     m_RefTypes.Add(ReadSerializedType(true));
@@ -255,14 +283,18 @@ namespace AssetStudio
 
         private SerializedType ReadSerializedType(bool isRefType)
         {
-            Logger.Verbose($"Attempting to parse serialized" + (isRefType ? " reference" : " ") + "type");
+            if(Logger.Flags.HasFlag(LoggerEvent.Verbose)){
+			Logger.Verbose($"Attempting to parse serialized" + (isRefType ? " reference" : " ") + "type");
+									}
             var type = new SerializedType();
 
             type.classID = reader.ReadInt32();
 
             if (game.Type.IsGIGroup() && BitConverter.ToBoolean(header.m_Reserved))
             {
-                Logger.Verbose($"Encoded class ID {type.classID}, decoding...");
+                if(Logger.Flags.HasFlag(LoggerEvent.Verbose)){
+			Logger.Verbose($"Encoded class ID {type.classID}, decoding...");
+									}
                 type.classID = DecodeClassID(type.classID);
             }
 
@@ -291,7 +323,9 @@ namespace AssetStudio
 
             if (m_EnableTypeTree)
             {
-                Logger.Verbose($"File has type tree enabled !!");
+                if(Logger.Flags.HasFlag(LoggerEvent.Verbose)){
+			Logger.Verbose($"File has type tree enabled !!");
+									}
                 type.m_Type = new TypeTree();
                 type.m_Type.m_Nodes = new List<TypeTreeNode>();
                 if (header.m_Version >= SerializedFileFormatVersion.Unknown_12 || header.m_Version == SerializedFileFormatVersion.Unknown_10)
@@ -317,13 +351,17 @@ namespace AssetStudio
                 }
             }
 
-            Logger.Verbose($"Serialized type info: {type}");
+            if(Logger.Flags.HasFlag(LoggerEvent.Verbose)){
+			Logger.Verbose($"Serialized type info: {type}");
+									}
             return type;
         }
 
         private void ReadTypeTree(TypeTree m_Type, int level = 0)
         {
-            Logger.Verbose($"Attempting to parse type tree...");
+            if(Logger.Flags.HasFlag(LoggerEvent.Verbose)){
+			Logger.Verbose($"Attempting to parse type tree...");
+									}
             var typeTreeNode = new TypeTreeNode();
             m_Type.m_Nodes.Add(typeTreeNode);
             typeTreeNode.m_Level = level;
@@ -351,15 +389,21 @@ namespace AssetStudio
                 ReadTypeTree(m_Type, level + 1);
             }
 
-            Logger.Verbose($"Type Tree Info: {m_Type}");
+            if(Logger.Flags.HasFlag(LoggerEvent.Verbose)){
+			Logger.Verbose($"Type Tree Info: {m_Type}");
+									}
         }
 
         private void TypeTreeBlobRead(TypeTree m_Type)
         {
-            Logger.Verbose($"Attempting to parse blob type tree...");
+            if(Logger.Flags.HasFlag(LoggerEvent.Verbose)){
+			Logger.Verbose($"Attempting to parse blob type tree...");
+									}
             int numberOfNodes = reader.ReadInt32();
             int stringBufferSize = reader.ReadInt32();
-            Logger.Verbose($"Found {numberOfNodes} nodes and {stringBufferSize} strings");
+            if(Logger.Flags.HasFlag(LoggerEvent.Verbose)){
+			Logger.Verbose($"Found {numberOfNodes} nodes and {stringBufferSize} strings");
+									}
             for (int i = 0; i < numberOfNodes; i++)
             {
                 var typeTreeNode = new TypeTreeNode();
@@ -389,7 +433,9 @@ namespace AssetStudio
                 }
             }
 
-            Logger.Verbose($"Type Tree Info: {m_Type}");
+            if(Logger.Flags.HasFlag(LoggerEvent.Verbose)){
+			Logger.Verbose($"Type Tree Info: {m_Type}");
+									}
 
             string ReadString(EndianBinaryReader stringBufferReader, uint value)
             {
@@ -410,7 +456,9 @@ namespace AssetStudio
 
         public void AddObject(Object obj)
         {
-            Logger.Verbose($"Caching object with {obj.m_PathID} in file {fileName}...");
+            if(Logger.Flags.HasFlag(LoggerEvent.Verbose)){
+			Logger.Verbose($"Caching object with {obj.m_PathID} in file {fileName}...");
+									}
             Objects.Add(obj);
             ObjectsDic.Add(obj.m_PathID, obj);
         }

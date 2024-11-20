@@ -22,7 +22,9 @@ namespace AssetStudio
         }
         private static void Decrypt(Span<byte> bytes)
         {
-            Logger.Verbose($"Attempting to decrypt block with NetEase encryption...");
+            if(Logger.Flags.HasFlag(LoggerEvent.Verbose)){
+			Logger.Verbose($"Attempting to decrypt block with NetEase encryption...");
+									}
 
             var encryptedInts = MemoryMarshal.Cast<byte, int>(bytes);
 
@@ -138,7 +140,9 @@ namespace AssetStudio
                 throw new Exception("Unsupported version");
             }
             var versionString = version.ToString("X4");
-            Logger.Verbose($"Bundle version: {versionString}");
+            if(Logger.Flags.HasFlag(LoggerEvent.Verbose)){
+			Logger.Verbose($"Bundle version: {versionString}");
+									}
             Encoding.UTF8.GetBytes(versionString, bytes);
         }
 

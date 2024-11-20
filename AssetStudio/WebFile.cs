@@ -30,19 +30,27 @@ namespace AssetStudio
             var signature = reader.ReadStringToNull();
             var headLength = reader.ReadInt32();
             var dataList = new List<WebData>();
-            Logger.Verbose($"Header size: 0x{headLength:X8}");
+            if(Logger.Flags.HasFlag(LoggerEvent.Verbose)){
+			Logger.Verbose($"Header size: 0x{headLength:X8}");
+									}
             while (reader.BaseStream.Position < headLength)
             {
                 var data = new WebData();
                 data.dataOffset = reader.ReadInt32();
                 data.dataLength = reader.ReadInt32();
                 var pathLength = reader.ReadInt32();
-                Logger.Verbose($"Path length: {pathLength}");
+                if(Logger.Flags.HasFlag(LoggerEvent.Verbose)){
+			Logger.Verbose($"Path length: {pathLength}");
+									}
                 data.path = Encoding.UTF8.GetString(reader.ReadBytes(pathLength));
-                Logger.Verbose($"Web data Info: {data}");
+                if(Logger.Flags.HasFlag(LoggerEvent.Verbose)){
+			Logger.Verbose($"Web data Info: {data}");
+									}
                 dataList.Add(data);
             }
-            Logger.Verbose("Writing files to streams...");
+            if(Logger.Flags.HasFlag(LoggerEvent.Verbose)){
+			Logger.Verbose("Writing files to streams...");
+									}
             fileList = new List<StreamFile>();
             for (int i = 0; i < dataList.Count; i++)
             {

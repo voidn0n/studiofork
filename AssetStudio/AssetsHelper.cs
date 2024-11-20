@@ -11,6 +11,7 @@ using System.Xml;
 using System.Text;
 using MessagePack;
 using System.Threading.Tasks;
+using System.Diagnostics;
 
 namespace AssetStudio
 {
@@ -43,7 +44,9 @@ namespace AssetStudio
             Directory.CreateDirectory(MapName);
             var files = Directory.GetFiles(MapName, "*.bin", SearchOption.TopDirectoryOnly);
             var mapNames = files.Select(Path.GetFileNameWithoutExtension).ToArray();
-            Logger.Verbose($"Found {mapNames.Length} CABMaps under Maps folder");
+            if(Logger.Flags.HasFlag(LoggerEvent.Verbose)){
+			Logger.Verbose($"Found {mapNames.Length} CABMaps under Maps folder");
+									}
             return mapNames;
         }
 
@@ -57,20 +60,26 @@ namespace AssetStudio
             tokenSource.Dispose();
             tokenSource = new CancellationTokenSource();
 
-            Logger.Verbose("Cleared AssetsHelper successfully !!");
+            if(Logger.Flags.HasFlag(LoggerEvent.Verbose)){
+			Logger.Verbose("Cleared AssetsHelper successfully !!");
+									}
         }
 
         public static void ClearOffsets()
         {
             Offsets.Clear();
-            Logger.Verbose("Cleared cached offsets");
+            if(Logger.Flags.HasFlag(LoggerEvent.Verbose)){
+			Logger.Verbose("Cleared cached offsets");
+									}
         }
 
         public static bool TryGet(string path, out long[] offsets)
         {
             if (Offsets.TryGetValue(path, out var list) && list.Count > 0)
             {
-                Logger.Verbose($"Found {list.Count} offsets for path {path}");
+                if(Logger.Flags.HasFlag(LoggerEvent.Verbose)){
+			Logger.Verbose($"Found {list.Count} offsets for path {path}");
+									}
                 offsets = list.ToArray();
                 return true;
             }
@@ -86,12 +95,16 @@ namespace AssetStudio
                 if (CABMap.TryGetValue(cab, out var entry))
                 {
                     var fullPath = Path.Combine(BaseFolder, entry.Path);
-                    Logger.Verbose($"Found {cab} in {fullPath}");
+                    if(Logger.Flags.HasFlag(LoggerEvent.Verbose)){
+			Logger.Verbose($"Found {cab} in {fullPath}");
+									}
                     if (!paths.Contains(fullPath))
                     {
                         Offsets.TryAdd(fullPath, new HashSet<long>());
                         Offsets[fullPath].Add(entry.Offset);
-                        Logger.Verbose($"Added {fullPath} to Offsets, at offset {entry.Offset}");
+                        if(Logger.Flags.HasFlag(LoggerEvent.Verbose)){
+			Logger.Verbose($"Added {fullPath} to Offsets, at offset {entry.Offset}");
+									}
                     }
                     foreach (var dep in entry.Dependencies)
                     {
@@ -106,7 +119,9 @@ namespace AssetStudio
         {
             var relativePath = Path.GetRelativePath(BaseFolder, path);
             cabs = CABMap.AsParallel().Where(x => x.Value.Path.Equals(relativePath, StringComparison.OrdinalIgnoreCase)).Select(x => x.Key).Distinct().ToList();
-            Logger.Verbose($"Found {cabs.Count} that belongs to {relativePath}");
+            if(Logger.Flags.HasFlag(LoggerEvent.Verbose)){
+			Logger.Verbose($"Found {cabs.Count} that belongs to {relativePath}");
+									}
             return cabs.Count != 0;
         }
 
@@ -115,13 +130,17 @@ namespace AssetStudio
             foreach (var file in files)
             {
                 Offsets.TryAdd(file, new HashSet<long>());
-                Logger.Verbose($"Added {file} to Offsets dictionary");
+                if(Logger.Flags.HasFlag(LoggerEvent.Verbose)){
+			Logger.Verbose($"Added {file} to Offsets dictionary");
+									}
                 if (FindCAB(file, out var cabs))
                 {
                     AddCABOffsets(files, cabs);
                 }
             }
-            Logger.Verbose($"Finished resolving dependncies, the original {files.Length} files will be loaded entirely, and the {Offsets.Count - files.Length} dependicnes will be loaded from cached offsets only");
+            if(Logger.Flags.HasFlag(LoggerEvent.Verbose)){
+			Logger.Verbose($"Finished resolving dependncies, the original {files.Length} files will be loaded entirely, and the {Offsets.Count - files.Length} dependicnes will be loaded from cached offsets only");
+									}
             return Offsets.Keys.ToArray();
         }
 
@@ -254,7 +273,9 @@ namespace AssetStudio
                 using var fs = File.OpenRead(Path.Combine(MapName, $"{mapName}.bin"));
                 using var reader = new BinaryReader(fs);
                 ParseCABMap(reader);
-                Logger.Verbose($"Initialized CABMap with {CABMap.Count} entries");
+                if(Logger.Flags.HasFlag(LoggerEvent.Verbose)){
+			Logger.Verbose($"Initialized CABMap with {CABMap.Count} entries");
+									}
                 Logger.Info($"Loaded {mapName} !!");
             }
             catch (Exception e)
@@ -276,7 +297,9 @@ namespace AssetStudio
                 using var fs = File.OpenRead(path);
                 using var reader = new BinaryReader(fs);
                 ParseCABMap(reader);
-                Logger.Verbose($"Initialized CABMap with {CABMap.Count} entries");
+                if(Logger.Flags.HasFlag(LoggerEvent.Verbose)){
+			Logger.Verbose($"Initialized CABMap with {CABMap.Count} entries");
+									}
                 Logger.Info($"Loaded {mapName} !!");
             }
             catch (Exception e)
@@ -738,6 +761,8 @@ namespace AssetStudio
         public static async Task BuildBoth(string[] files, string mapName, string baseFolder, Game game, string savePath, ExportListType exportListType, ClassIDType[] typeFilters = null, Regex[] nameFilters = null, Regex[] containerFilters = null)
         {
             Logger.Info($"Building Both...");
+            Stopwatch stopwatch = new Stopwatch();
+            stopwatch.Start();
             CABMap.Clear();
             Progress.Reset();
             var collision = 0;
@@ -755,6 +780,10 @@ namespace AssetStudio
 
             Logger.Info($"Map build successfully !! {collision} collisions found");
             await ExportAssetsMap(assets, game, mapName, savePath, exportListType);
+            stopwatch.Stop();
+            Console.ForegroundColor = ConsoleColor.Green;
+            Logger.Info($"BuildBoth {mapName} completed in {stopwatch.Elapsed.TotalSeconds} seconds.");
+            Console.ResetColor();
         }
     }
 }

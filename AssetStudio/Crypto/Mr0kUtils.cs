@@ -21,7 +21,9 @@ namespace AssetStudio
 
             var encryptedBlockSize = Math.Min(0x10 * ((data.Length - 0x94) >> 7), BlockSize);
 
-            Logger.Verbose($"Encrypted block size: {encryptedBlockSize}");
+            if(Logger.Flags.HasFlag(LoggerEvent.Verbose)){
+			Logger.Verbose($"Encrypted block size: {encryptedBlockSize}");
+									}
             if (!mr0k.InitVector.IsNullOrEmpty())
             {
                 for (int i = 0; i < mr0k.InitVector.Length; i++)
@@ -48,7 +50,9 @@ namespace AssetStudio
             var seed2 = BinaryPrimitives.ReadUInt64LittleEndian(key3);
             var seed = seed2 ^ seed1 ^ (seed1 + (uint)data.Length - 20);
 
-            Logger.Verbose($"Seed: 0x{seed:X8}");
+            if(Logger.Flags.HasFlag(LoggerEvent.Verbose)){
+			Logger.Verbose($"Seed: 0x{seed:X8}");
+									}
 
             var encryptedBlock = data.Slice(0x94, encryptedBlockSize);
             var seedSpan = BitConverter.GetBytes(seed);

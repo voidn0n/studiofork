@@ -1096,8 +1096,12 @@ namespace AssetStudio
                             }
                             catch (Exception e)
                             {
-                                Logger.Verbose($"Decompile error {e.Message}");
-                                Logger.Verbose($"Attempting to disassemble...");
+                                if(Logger.Flags.HasFlag(LoggerEvent.Verbose)){
+			Logger.Verbose($"Decompile error {e.Message}");
+									}
+                                if(Logger.Flags.HasFlag(LoggerEvent.Verbose)){
+			Logger.Verbose($"Attempting to disassemble...");
+									}
 
                                 try
                                 {
