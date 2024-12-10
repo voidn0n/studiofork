@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Collections.Specialized;
 using System.Linq;
 using System.Text;
+using System.Xml.Linq;
 
 namespace AssetStudio
 {
@@ -793,10 +794,19 @@ namespace AssetStudio
                     {
                         for (int i = 1; ; i++)
                         {
+
                             var name = m_Texture2D.m_Name + $" ({i}){ext}";
+                            if (m_Texture2D.m_Name == "RampMap_Linear_RGBAHalf")
+                            {
+                                name = m_Texture2D.m_Name + "_" + m_Texture2D.m_PathID.ToString() + ext;
+                            }
+
+                            
                             if (ImportedHelpers.FindTexture(name, TextureList) == null)
                             {
                                 texture.Name = name;
+                              
+                                
                                 textureNameDictionary.Add(m_Texture2D, name);
                                 break;
                             }
@@ -805,9 +815,14 @@ namespace AssetStudio
                     else
                     {
                         texture.Name = m_Texture2D.m_Name + ext;
+                        if (m_Texture2D.m_Name == "RampMap_Linear_RGBAHalf")
+                        {
+                            texture.Name = m_Texture2D.m_Name + "_" + m_Texture2D.m_PathID.ToString() + ext;
+                        }
                         textureNameDictionary.Add(m_Texture2D, texture.Name);
                     }
-
+                    
+                   
                     texture.Offset = texEnv.Value.m_Offset;
                     texture.Scale = texEnv.Value.m_Scale;
                     ConvertTexture2D(m_Texture2D, texture.Name, isNormal);
@@ -824,6 +839,8 @@ namespace AssetStudio
 
         private void ConvertTexture2D(Texture2D m_Texture2D, string name, bool isNormal)
         {
+            
+         
             var iTex = ImportedHelpers.FindTexture(name, TextureList);
             if (iTex != null)
             {

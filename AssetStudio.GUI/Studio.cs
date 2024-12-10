@@ -565,6 +565,9 @@ namespace AssetStudio.GUI
                                 exportPath = Path.Combine(savePath, Path.GetFileName(asset.SourceFile.originalPath) + "_export", asset.SourceFile.fileName);
                             }
                             break;
+                        case AssetGroupOption.ByPathId:
+                            exportPath = Path.Combine(savePath, asset.m_PathID.ToString());
+                            break;
                         default:
                             exportPath = savePath;
                             break;

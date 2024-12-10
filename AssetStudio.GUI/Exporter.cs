@@ -16,7 +16,14 @@ namespace AssetStudio.GUI
             if (Properties.Settings.Default.convertTexture)
             {
                 var type = Properties.Settings.Default.convertType;
-                if (!TryExportFile(exportPath, item, "." + type.ToString().ToLower(), out var exportFullPath))
+                var namestring = "." + type.ToString().ToLower();
+
+                if (item.Text == "RampMap_Linear_RGBAHalf")
+                {
+                    namestring = "_" + item.m_PathID + namestring;
+                }
+                
+                if (!TryExportFile(exportPath, item, namestring, out var exportFullPath))
                     return false;
                 var image = m_Texture2D.ConvertToImage(true);
                 if (image == null)
@@ -311,6 +318,7 @@ namespace AssetStudio.GUI
             {
                 for (int i = 1; i < int.MaxValue; i++)
                 {
+
                     fullPath = Path.Combine(dir, $"{fileName} ({i}){extension}");
                     if (!File.Exists(fullPath))
                     {
@@ -323,6 +331,7 @@ namespace AssetStudio.GUI
         private static bool TryExportFolder(string dir, AssetItem item, out string fullPath)
         {
             var fileName = FixFileName(item.Text);
+            
             fullPath = Path.Combine(dir, fileName);
             if (!Directory.Exists(fullPath))
             {
@@ -383,7 +392,8 @@ namespace AssetStudio.GUI
                     ExportJSONFile(matItem, materialExportPath);
                 }
             }
-           	ExportFbx(convert, exportFullPath);
+           	
+            ExportFbx(convert, exportFullPath);
             return true;
         }
 
@@ -551,6 +561,7 @@ namespace AssetStudio.GUI
 
         public static string FixFileName(string str)
         {
+
             if (str.Length >= 260) return Path.GetRandomFileName();
             return Path.GetInvalidFileNameChars().Aggregate(str, (current, c) => current.Replace(c, '_'));
         }

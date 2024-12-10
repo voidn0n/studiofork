@@ -14,9 +14,13 @@ namespace AssetStudio.CLI
             var m_Texture2D = (Texture2D)item.Asset;
             if (Properties.Settings.Default.convertTexture)
             {
+                
                 var type = Properties.Settings.Default.convertType;
-                if (!TryExportFile(exportPath, item, "." + type.ToString().ToLower(), out var exportFullPath))
+                var namestring = "." + type.ToString().ToLower();
+
+                if (!TryExportFile(exportPath, item, namestring, out var exportFullPath))
                     return false;
+                return false;
                 var image = m_Texture2D.ConvertToImage(true);
                 if (image == null)
                     return false;
@@ -299,7 +303,9 @@ namespace AssetStudio.CLI
 
         private static bool TryExportFile(string dir, AssetItem item, string extension, out string fullPath)
         {
+
             var fileName = FixFileName(item.Text);
+            
             fullPath = Path.Combine(dir, $"{fileName}{extension}");
             if (!File.Exists(fullPath))
             {
